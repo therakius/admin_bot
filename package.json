@@ -1,0 +1,33 @@
+{
+  "name": "leena_assistant",
+  "version": "0.1.0",
+  "description": "adminBot",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/therakius/leena.git"
+  },
+  "keywords": [
+    "whatsapp-bot",
+    "group-management"
+  ],
+  "author": "therakius",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/therakius/leena/issues"
+  },
+  "homepage": "https://leena-ai-lp.vercel.app",
+  "dependencies": {
+    "@whiskeysockets/baileys": "latest",
+    "axios": "^1.14.0",
+    "dotenv": "^17.4.1",
+    "pg": "^8.20.0",
+    "qrcode": "^1.5.4"
+  }
+}
