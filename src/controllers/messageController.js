@@ -159,9 +159,10 @@ export async function handleMessage(sock, message) {
           isBotAdmin,
           isOwner,
           botJid,
+          message
         ),
-      mute: () => handleMute(sock, jid, isBotAdmin, true, isOwner),
-      unmute: () => handleMute(sock, jid, isBotAdmin, false, isOwner),
+      mute: () => handleMute(sock, jid, isBotAdmin, true, isOwner, message),
+      unmute: () => handleMute(sock, jid, isBotAdmin, false, isOwner, message),
       promote: () =>
         handleRole(
           sock,
@@ -172,6 +173,7 @@ export async function handleMessage(sock, message) {
           "promote",
           isOwner,
           botJid,
+          message
         ),
       demote: () =>
         handleRole(
@@ -183,9 +185,10 @@ export async function handleMessage(sock, message) {
           "demote",
           isOwner,
           botJid,
+          message
         ),
-      info: () => handleInfo(sock, jid, groupMeta),
-      help: () => handleHelp(sock, jid, isAdmin || isOwner),
+      info: () => handleInfo(sock, jid, groupMeta, message),
+      help: () => handleHelp(sock, jid, isAdmin || isOwner, message),
     };
 
     await handlers[cmd]();
@@ -204,23 +207,23 @@ async function handleKick(
   participants,
   isBotAdmin,
   isOwner,
-  botJid,
+  botJid, message
 ) {
   console.log(
     `\n⚙️  handleKick | target: ${target} | isBotAdmin: ${isBotAdmin} | isOwner: ${isOwner}`,
   );
 
   if (!target) {
-    return sock.sendMessage(jid, { text: "⚠️ Reply or @mention a user." });
+    return sock.sendMessage(jid, { text: "⚠️ Reply or @mention a user." }, {quoted : message});
   }
 
   if (!isBotAdmin && !isOwner) {
     console.log("🚫 Bot is not admin — cannot kick");
-    return sock.sendMessage(jid, { text: "⚠️ I need admin rights." });
+    return sock.sendMessage(jid, { text: "⚠️ I need admin rights." }, {quoted : message});
   }
 
   if (sameUser(target, botJid)) {
-    return sock.sendMessage(jid, { text: "⚠️ I cannot remove myself." });
+    return sock.sendMessage(jid, { text: "⚠️ I cannot remove myself." }, {quoted : message});
   }
 
   const targetParticipant = findParticipant(participants, target);
@@ -233,7 +236,7 @@ async function handleKick(
   );
 
   if (isTargetAdmin && !isOwner) {
-    return sock.sendMessage(jid, { text: "❌ Cannot remove an admin." });
+    return sock.sendMessage(jid, { text: "❌ Cannot remove an admin." }, {quoted : message});
   }
 
   try {
@@ -241,22 +244,22 @@ async function handleKick(
     const targetJid = targetParticipant?.id || target;
     await sock.groupParticipantsUpdate(jid, [targetJid], "remove");
     console.log(`✅ Kicked: ${targetJid}`);
-    await sock.sendMessage(jid, { text: "✅ Member removed." });
+    await sock.sendMessage(jid, { text: "✅ Member removed." }, {quoted : message});
   } catch (err) {
     console.error("❌ Kick error:", err);
-    await sock.sendMessage(jid, { text: "❌ Failed to remove member." });
+    await sock.sendMessage(jid, { text: "❌ Failed to remove member." }, {quoted : message});
   }
 }
 
 // ===== MUTE / UNMUTE =====
-async function handleMute(sock, jid, isBotAdmin, mute, isOwner) {
+async function handleMute(sock, jid, isBotAdmin, mute, isOwner, message) {
   console.log(
     `\n⚙️  handleMute | mute: ${mute} | isBotAdmin: ${isBotAdmin} | isOwner: ${isOwner}`,
   );
 
   if (!isBotAdmin && !isOwner) {
     console.log("🚫 Bot is not admin — cannot mute");
-    return sock.sendMessage(jid, { text: "⚠️ I need admin rights." });
+    return sock.sendMessage(jid, { text: "⚠️ I need admin rights." }, {quoted : message});
   }
 
   try {
@@ -270,7 +273,7 @@ async function handleMute(sock, jid, isBotAdmin, mute, isOwner) {
     });
   } catch (err) {
     console.error("❌ Mute error:", err);
-    await sock.sendMessage(jid, { text: "❌ Failed to change setting." });
+    await sock.sendMessage(jid, { text: "❌ Failed to change setting." }, {quoted : message});
   }
 }
 
@@ -284,22 +287,23 @@ async function handleRole(
   action,
   isOwner,
   botJid,
+  message
 ) {
   console.log(
     `\n⚙️  handleRole | action: ${action} | target: ${target} | isBotAdmin: ${isBotAdmin}`,
   );
 
   if (!target) {
-    return sock.sendMessage(jid, { text: "⚠️ Reply or @mention a user." });
+    return sock.sendMessage(jid, { text: "⚠️ Reply or @mention a user." }, {quoted : message});
   }
 
   if (!isBotAdmin && !isOwner) {
     console.log("🚫 Bot is not admin — cannot change roles");
-    return sock.sendMessage(jid, { text: "⚠️ I need admin rights." });
+    return sock.sendMessage(jid, { text: "⚠️ I need admin rights." }, {quoted : message});
   }
 
   if (sameUser(target, botJid)) {
-    return sock.sendMessage(jid, { text: "⚠️ I cannot change my own role." });
+    return sock.sendMessage(jid, { text: "⚠️ I cannot change my own role." }, {quoted : message});
   }
 
   try {
@@ -315,12 +319,12 @@ async function handleRole(
     });
   } catch (err) {
     console.error(`❌ Role error (${action}):`, err);
-    await sock.sendMessage(jid, { text: "❌ Failed to change role." });
+    await sock.sendMessage(jid, { text: "❌ Failed to change role." }, {quoted : message});
   }
 }
 
 // ===== INFO =====
-async function handleInfo(sock, jid, groupMeta) {
+async function handleInfo(sock, jid, groupMeta, message) {
   console.log(`\n⚙️  handleInfo | group: ${groupMeta.subject}`);
 
   const adminParticipants = groupMeta.participants.filter((p) => p.admin);
@@ -338,11 +342,11 @@ async function handleInfo(sock, jid, groupMeta) {
   ].join("\n");
 
   const mentions = adminParticipants.map((p) => p.id);
-  await sock.sendMessage(jid, { text, mentions });
+  await sock.sendMessage(jid, { text, mentions }, {quoted : message});
 }
 
 // ===== HELP =====
-async function handleHelp(sock, jid, isPrivileged) {
+async function handleHelp(sock, jid, isPrivileged, message) {
   console.log(`\n⚙️  handleHelp | isPrivileged: ${isPrivileged}`);
 
   const lines = Object.entries(COMMANDS)
@@ -351,5 +355,5 @@ async function handleHelp(sock, jid, isPrivileged) {
 
   await sock.sendMessage(jid, {
     text: `🤖 *Commands:*\n\n${lines.join("\n")}`,
-  });
+  }, {quoted : message});
 }
