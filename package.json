@@ -27,6 +27,7 @@
     "@whiskeysockets/baileys": "latest",
     "axios": "^1.14.0",
     "dotenv": "^17.4.1",
+    "express": "^5.2.1",
     "pg": "^8.20.0",
     "qrcode": "^1.5.4"
   }
