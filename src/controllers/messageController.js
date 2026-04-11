@@ -270,7 +270,7 @@ async function handleMute(sock, jid, isBotAdmin, mute, isOwner, message) {
     console.log(`✅ Group ${mute ? "muted" : "unmuted"}`);
     await sock.sendMessage(jid, {
       text: mute ? "🔇 Group silenced." : "🔊 Group opened.",
-    });
+    }, {quoted : message});
   } catch (err) {
     console.error("❌ Mute error:", err);
     await sock.sendMessage(jid, { text: "❌ Failed to change setting." }, {quoted : message});
@@ -316,7 +316,7 @@ async function handleRole(
         action === "promote"
           ? "✅ Promoted to admin."
           : "✅ Demoted to member.",
-    });
+    }, {quoted: message});
   } catch (err) {
     console.error(`❌ Role error (${action}):`, err);
     await sock.sendMessage(jid, { text: "❌ Failed to change role." }, {quoted : message});
