@@ -12,7 +12,7 @@ const COMMANDS = {
   demote: { desc: "Demote an admin", usage: ".demote", adminOnly: true },
   info: { desc: "Show group information", usage: ".info" },
   help: { desc: "Show this menu", usage: ".help" },
-  warn: {desc: "warns a specific member", usage: ".warn", adminOnly: true}
+  warn: {desc: "Warns a specific member", usage: ".warn", adminOnly: true}
 };
 
 // ==================== UTILS ====================
