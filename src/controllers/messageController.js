@@ -12,6 +12,7 @@ const COMMANDS = {
   demote: { desc: "Demote an admin", usage: ".demote", adminOnly: true },
   info: { desc: "Show group information", usage: ".info" },
   help: { desc: "Show this menu", usage: ".help" },
+  warn: {desc: "warns a specific member", usage: ".warn", adminOnly: true}
 };
 
 // ==================== UTILS ====================
@@ -189,6 +190,7 @@ export async function handleMessage(sock, message) {
         ),
       info: () => handleInfo(sock, jid, groupMeta, message),
       help: () => handleHelp(sock, jid, isAdmin || isOwner, message),
+      warn: ()=> handleWarn(sock, jid, target, participants, isBotAdmin, "warn", isOwner, botJid, message)
     };
 
     await handlers[cmd]();
@@ -356,4 +358,51 @@ async function handleHelp(sock, jid, isPrivileged, message) {
   await sock.sendMessage(jid, {
     text: `🤖 *Commands:*\n\n${lines.join("\n")}`,
   }, {quoted : message});
+}
+
+// ===== WARN =====
+async function handleWarn(
+  sock,
+  jid,
+  target,
+  participants,
+  isBotAdmin,
+  action,
+  isOwner,
+  botJid,
+  message
+) {
+  console.log(
+    `\n⚙️  handleWarn | target: ${target} | isBotAdmin: ${isBotAdmin} | isOwner: ${isOwner}`,
+  );
+
+  if (!target) {
+    return sock.sendMessage(jid, { text: "⚠️ Reply or @mention a user to warn." }, {quoted : message});
+  }
+
+  if (sameUser(target, botJid)) {
+    return sock.sendMessage(jid, { text: "⚠️ I cannot warn myself." }, {quoted : message});
+  }
+
+  const targetParticipant = findParticipant(participants, target);
+
+  if (!targetParticipant) {
+    console.log("🎯 Target participant not found");
+    return sock.sendMessage(jid, { text: "⚠️ User not found in the group." }, {quoted : message});
+  }
+
+  try {
+    const targetNumber = extractNumber(targetParticipant.id);
+    const warningText = `⚠️ @${targetNumber}, Please behave yourself or you'll be removed. 🙂`;
+
+    await sock.sendMessage(jid, {
+      text: warningText,
+      mentions: [targetParticipant.id],
+    }, {quoted : message});
+
+    console.log(`✅ Warned: ${targetParticipant.id}`);
+  } catch (err) {
+    console.error("❌ Warn error:", err);
+    await sock.sendMessage(jid, { text: "❌ Failed to send warning." }, {quoted : message});
+  }
 }
