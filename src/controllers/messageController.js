@@ -54,6 +54,9 @@ export async function handleMessage(sock, message) {
       msg?.videoMessage?.caption ||
       "";
 
+    // Check for trivia answers (before prefix check)
+    checkTriviaAnswer(sock, message);
+
     if (!text.startsWith(PREFIX)) return;
 
     const [rawCmd] = text.slice(PREFIX.length).trim().split(/\s+/);
