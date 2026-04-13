@@ -67,5 +67,5 @@ Respond ONLY with a valid JSON object, no markdown, no explanation:
   recentQuestions.push(parsed.question);
   if (recentQuestions.length > 20) recentQuestions.shift();
 
-  return completion;
+  return parsed;
 }
