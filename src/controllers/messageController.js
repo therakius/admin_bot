@@ -193,7 +193,7 @@ export async function handleMessage(sock, message) {
       info: () => handleInfo(sock, jid, groupMeta, message),
       help: () => handleHelp(sock, jid, isAdmin || isOwner, message),
       warn: ()=> handleWarn(sock, jid, target, participants, isBotAdmin, "warn", isOwner, botJid, message),
-      trivia: () => handleTrivia(sock, jid, target)
+      trivia: () => handleTrivia(sock, jid, message)
     };
 
     await handlers[cmd]();
@@ -448,7 +448,7 @@ export function checkTriviaAnswer(sock, message) {
 }
 
 /// ===== TRIVIA HANDLER =====
-async function handleTrivia(sock, jid) {
+async function handleTrivia(sock, jid, message) {
   console.log(`\n⚙️  handleTrivia | jid: ${jid}`);
 
   const state = triviaState.get(jid) || {};
@@ -467,6 +467,7 @@ async function handleTrivia(sock, jid) {
   try {
     await sock.sendMessage(jid, { text: "🎲 Generating a trivia question..." });
     triviaData = await generateTriviaQuestion();
+    
   } catch (err) {
     console.error("❌ Trivia generation error:", err);
     return sock.sendMessage(jid, {
