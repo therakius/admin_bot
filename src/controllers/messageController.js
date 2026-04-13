@@ -1,4 +1,5 @@
 // controllers/messageController.js
+import { generateTriviaQuestion } from "../integrations/groq.js";
 
 const PREFIX = ".";
 const BOT_OWNER = process.env.BOT_OWNER_NUMBER;
@@ -12,7 +13,8 @@ const COMMANDS = {
   demote: { desc: "Demote an admin", usage: ".demote", adminOnly: true },
   info: { desc: "Show group information", usage: ".info" },
   help: { desc: "Show this menu", usage: ".help" },
-  warn: {desc: "Warns a specific member", usage: ".warn", adminOnly: true}
+  warn: {desc: "Warns a specific member", usage: ".warn", adminOnly: true},
+  trivia: {desc: "Generates a trivia question and options with the answers. The first user to choose the correct option wins. trivia only resets after 60s", usage: ".trivia"}
 };
 
 // ==================== UTILS ====================
@@ -190,7 +192,8 @@ export async function handleMessage(sock, message) {
         ),
       info: () => handleInfo(sock, jid, groupMeta, message),
       help: () => handleHelp(sock, jid, isAdmin || isOwner, message),
-      warn: ()=> handleWarn(sock, jid, target, participants, isBotAdmin, "warn", isOwner, botJid, message)
+      warn: ()=> handleWarn(sock, jid, target, participants, isBotAdmin, "warn", isOwner, botJid, message),
+      trivia: () => handleTrivia(sock, jid, target)
     };
 
     await handlers[cmd]();
@@ -405,4 +408,102 @@ async function handleWarn(
     console.error("❌ Warn error:", err);
     await sock.sendMessage(jid, { text: "❌ Failed to send warning." }, {quoted : message});
   }
+}
+
+
+// ===== TRIVIA STATE =====
+const triviaState = new Map();
+
+// ===== TRIVIA ANSWER LISTENER =====
+export function checkTriviaAnswer(sock, message) {
+  const jid = message.key.remoteJid;
+  if (!jid?.endsWith("@g.us")) return;
+  if (message.key.fromMe) return;
+
+  const state = triviaState.get(jid);
+  if (!state?.active) return;
+
+  const msg = message.message;
+  const text = (
+    msg?.conversation ||
+    msg?.extendedTextMessage?.text ||
+    ""
+  ).trim().toUpperCase();
+
+  if (!["A", "B", "C", "D"].includes(text)) return;
+
+  if (text === state.answer) {
+    triviaState.set(jid, { ...state, active: false });
+
+    const senderId = message.key.participant;
+    const number = extractNumber(senderId);
+
+    sock.sendMessage(jid, {
+      text: `🎉 *@${number} got it right!*\n✅ The answer was *${state.answer}*: ${state.options[state.answer]}`,
+      mentions: [senderId],
+    });
+
+    console.log(`✅ Trivia answered correctly by ${senderId} in ${jid}`);
+  }
+}
+
+/// ===== TRIVIA HANDLER =====
+async function handleTrivia(sock, jid) {
+  console.log(`\n⚙️  handleTrivia | jid: ${jid}`);
+
+  const state = triviaState.get(jid) || {};
+  const COOLDOWN = 70_000;
+
+  if (state.lastUsed && Date.now() - state.lastUsed < COOLDOWN) {
+    const secsLeft = Math.ceil((COOLDOWN - (Date.now() - state.lastUsed)) / 1000);
+    return sock.sendMessage(jid, {
+      text: `⏳ Wait *${secsLeft}s* before starting a new trivia.`,
+    });
+  }
+
+  triviaState.set(jid, { ...state, lastUsed: Date.now(), active: false });
+
+  let triviaData;
+  try {
+    await sock.sendMessage(jid, { text: "🎲 Generating a trivia question..." });
+    triviaData = await generateTriviaQuestion();
+  } catch (err) {
+    console.error("❌ Trivia generation error:", err);
+    return sock.sendMessage(jid, {
+      text: "❌ Failed to generate trivia question. Try again.",
+    });
+  }
+
+  console.log(`🎯 Trivia data:`, triviaData);
+  if (!triviaData?.question || !triviaData?.options?.A || !triviaData?.answer) {
+    return sock.sendMessage(jid, {
+      text: "❌ Invalid trivia response. Try again.",
+    });
+  }
+
+  const { question, options, answer } = triviaData;
+
+  triviaState.set(jid, {
+    active: true,
+    question,
+    options,
+    answer: answer.toUpperCase().trim(),
+    lastUsed: Date.now(),
+  });
+
+  const text = [
+    `🧠 *TRIVIA TIME!*`,
+    ``,
+    `❓ ${question}`,
+    ``,
+    `🅰️ ${options.A}`,
+    `🅱️ ${options.B}`,
+    `🅲 ${options.C}`,
+    `🅳 ${options.D}`,
+    ``,
+    `💬 Reply with A, B, C or D!`,
+  ].join("\n");
+
+  await sock.sendMessage(jid, { text }, {quoted : message});
+  console.log(`✅ Trivia started in ${jid} | Answer: ${answer}`);
 }

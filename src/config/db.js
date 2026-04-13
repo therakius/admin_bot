@@ -5,7 +5,7 @@ dotenv.config();
 const { Client: PGClient } = pkg;
 
 export const pg = new PGClient({
-  connectionString: process.env.REMOTE_DB_URL,
+  connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false,
   },

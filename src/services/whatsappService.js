@@ -5,7 +5,12 @@ import { pg } from '../config/db.js';
 import { SESSION_DIR, syncSessionFromDB, syncSessionToDB } from './sessionService.js';
 import { handleMessage } from '../controllers/messageController.js';
 
+let isConnecting = false;
+
 export async function startBot() {
+    if (isConnecting) return; // جلوگیری از múltiplas instâncias
+    isConnecting = true;
+
     await syncSessionFromDB();
 
     fs.mkdirSync(SESSION_DIR, { recursive: true });
@@ -17,10 +22,11 @@ export async function startBot() {
         version,
         auth: state,
         printQRInTerminal: false,
+        connectTimeoutMs: 20000,
+        keepAliveIntervalMs: 10000,
     });
 
     sock.ev.on('creds.update', async () => {
-        fs.mkdirSync(SESSION_DIR, { recursive: true });
         await saveCreds();
         await syncSessionToDB();
     });
@@ -36,19 +42,30 @@ export async function startBot() {
         }
 
         if (connection === 'open') {
-            console.log('Leena WhatsApp bot is ready!');
+            console.log('✅ Bot connected!');
+            isConnecting = false;
         }
 
         if (connection === 'close') {
             const statusCode = lastDisconnect?.error?.output?.statusCode;
             const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-            console.log('Connection closed, status:', statusCode, 'reconnecting:', shouldReconnect);
+
+            console.log('Connection closed:', statusCode);
+
             if (shouldReconnect) {
-                await startBot();
+                console.log('Reconnecting in 5 seconds...');
+                isConnecting = false;
+
+                setTimeout(() => {
+                    startBot();
+                }, 1000); // ⬅️ KEY FIX
             } else {
                 console.log('Logged out — clearing session');
+
                 await pg.query('DELETE FROM whatsapp_sessions WHERE id = $1', ['baileys']);
                 fs.rmSync(SESSION_DIR, { recursive: true, force: true });
+
+                isConnecting = false;
             }
         }
     });
