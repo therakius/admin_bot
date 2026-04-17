@@ -69,3 +69,18 @@ Respond ONLY with a valid JSON object, no markdown, no explanation:
 
   return parsed;
 }
+
+export async function explainTopic(topic) {
+  const completion = await groq.chat.completions.create({
+    messages: [
+      {
+        role: "user",
+        content: `Please provide a clear, concise explanation of: ${topic}. Keep it informative but brief (2-3 paragraphs max).`,
+      },
+    ],
+    model: "llama-3.3-70b-versatile",
+    temperature: 0.7,
+  });
+
+  return completion.choices[0]?.message?.content || "Unable to generate explanation.";
+}

@@ -1,5 +1,5 @@
 // controllers/messageController.js
-import { generateTriviaQuestion } from "../integrations/groq.js";
+import { generateTriviaQuestion, explainTopic } from "../integrations/groq.js";
 
 const PREFIX = ".";
 const BOT_OWNER = process.env.BOT_OWNER_NUMBER;
@@ -14,7 +14,8 @@ const COMMANDS = {
   info: { desc: "Show group information", usage: ".info" },
   help: { desc: "Show this menu", usage: ".help" },
   warn: {desc: "Warns a specific member", usage: ".warn", adminOnly: true},
-  trivia: {desc: "Generates a trivia question and options with the answers. The first user to choose the correct option wins. trivia only resets after 60s", usage: ".trivia"}
+  trivia: {desc: "Generates a trivia question and options with the answers. The first user to choose the correct option wins. trivia only resets after 60s", usage: ".trivia"},
+  explain: {desc: "Explain a topic using AI", usage: ".explain <topic>"}
 };
 
 // ==================== UTILS ====================
@@ -196,7 +197,8 @@ export async function handleMessage(sock, message) {
       info: () => handleInfo(sock, jid, groupMeta, message),
       help: () => handleHelp(sock, jid, isAdmin || isOwner, message),
       warn: ()=> handleWarn(sock, jid, target, participants, isBotAdmin, "warn", isOwner, botJid, message),
-      trivia: () => handleTrivia(sock, jid, message)
+      trivia: () => handleTrivia(sock, jid, message),
+      explain: () => handleExplain(sock, jid, message)
     };
 
     await handlers[cmd]();
@@ -510,4 +512,42 @@ async function handleTrivia(sock, jid, message) {
 
   await sock.sendMessage(jid, { text }, {quoted : message});
   console.log(`✅ Trivia started in ${jid} | Answer: ${answer}`);
+}
+
+
+async function handleExplain(sock, jid, message) {
+  console.log(`\n⚙️  handleExplain | jid: ${jid}`);
+
+  try {
+    // Extract the full message text
+    const messageText = message.message?.extendedTextMessage?.text || message.message?.conversation || "";
+    
+    // Extract topic by removing the ".explain " prefix
+    const topic = messageText.replace(/^\.explain\s+/i, "").trim();
+
+    // Validate topic was provided
+    if (!topic) {
+      return sock.sendMessage(jid, { 
+        text: "❌ Please provide a topic to explain.\n\n📝 *Usage:* `.explain quantum physics`" 
+      }, { quoted: message });
+    }
+
+    // Send loading message
+    await sock.sendMessage(jid, { text: "🔍 Let me think about that..." }, { quoted: message });
+
+    // Get explanation from AI
+    console.log(`📚 Explaining: ${topic}`);
+    const explanation = await explainTopic(topic);
+
+    // Send the explanation
+    const responseText = `📚 *Explanation: ${topic}*\n\n${explanation}`;
+    await sock.sendMessage(jid, { text: responseText }, { quoted: message });
+    
+    console.log(`✅ Explanation sent for: ${topic}`);
+  } catch (error) {
+    console.error("❌ Error in handleExplain:", error);
+    await sock.sendMessage(jid, { 
+      text: "❌ Failed to generate explanation. Please try again." 
+    }, { quoted: message });
+  }
 }
