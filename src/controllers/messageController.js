@@ -455,7 +455,7 @@ async function handleTrivia(sock, jid, message) {
   console.log(`\n⚙️  handleTrivia | jid: ${jid}`);
 
   const state = triviaState.get(jid) || {};
-  const COOLDOWN = 70_000;
+  const COOLDOWN = 10_000;
 
   if (state.lastUsed && Date.now() - state.lastUsed < COOLDOWN) {
     const secsLeft = Math.ceil((COOLDOWN - (Date.now() - state.lastUsed)) / 1000);
