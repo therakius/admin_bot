@@ -13,9 +13,12 @@ const COMMANDS = {
   demote: { desc: "Demote an admin", usage: ".demote", adminOnly: true },
   info: { desc: "Show group information", usage: ".info" },
   help: { desc: "Show this menu", usage: ".help" },
-  warn: {desc: "Warns a specific member", usage: ".warn", adminOnly: true},
-  trivia: {desc: "Generates a trivia question and options with the answers. The first user to choose the correct option wins. trivia only resets after 60s", usage: ".trivia"},
-  explain: {desc: "Explain a topic using AI", usage: ".explain <topic>"}
+  warn: { desc: "Warns a specific member", usage: ".warn", adminOnly: true },
+  trivia: {
+    desc: "Generates a trivia question and options with the answers. The first user to choose the correct option wins. trivia only resets after 60s",
+    usage: ".trivia",
+  },
+  explain: { desc: "Explain a topic using AI", usage: ".explain <topic>" },
 };
 
 // ==================== UTILS ====================
@@ -130,8 +133,8 @@ export async function handleMessage(sock, message) {
     const senderParticipant = findParticipant(participants, senderId);
     const isAdmin = senderParticipant?.admin != null;
     const isOwner =
-    sameUser(senderId, process.env.BOT_OWNER_NUMBER) ||
-    sameUser(senderId, process.env.BOT_OWNER_LID);
+      sameUser(senderId, process.env.BOT_OWNER_NUMBER) ||
+      sameUser(senderId, process.env.BOT_OWNER_LID);
 
     console.log(
       `🔐 isAdmin: ${isAdmin} | isBotAdmin: ${isBotAdmin} | isOwner: ${isOwner}`,
@@ -166,7 +169,7 @@ export async function handleMessage(sock, message) {
           isBotAdmin,
           isOwner,
           botJid,
-          message
+          message,
         ),
       mute: () => handleMute(sock, jid, isBotAdmin, true, isOwner, message),
       unmute: () => handleMute(sock, jid, isBotAdmin, false, isOwner, message),
@@ -180,7 +183,7 @@ export async function handleMessage(sock, message) {
           "promote",
           isOwner,
           botJid,
-          message
+          message,
         ),
       demote: () =>
         handleRole(
@@ -192,13 +195,24 @@ export async function handleMessage(sock, message) {
           "demote",
           isOwner,
           botJid,
-          message
+          message,
         ),
       info: () => handleInfo(sock, jid, groupMeta, message),
       help: () => handleHelp(sock, jid, isAdmin || isOwner, message),
-      warn: ()=> handleWarn(sock, jid, target, participants, isBotAdmin, "warn", isOwner, botJid, message),
+      warn: () =>
+        handleWarn(
+          sock,
+          jid,
+          target,
+          participants,
+          isBotAdmin,
+          "warn",
+          isOwner,
+          botJid,
+          message,
+        ),
       trivia: () => handleTrivia(sock, jid, message),
-      explain: () => handleExplain(sock, jid, message)
+      explain: () => handleExplain(sock, jid, message),
     };
 
     await handlers[cmd]();
@@ -217,23 +231,36 @@ async function handleKick(
   participants,
   isBotAdmin,
   isOwner,
-  botJid, message
+  botJid,
+  message,
 ) {
   console.log(
     `\n⚙️  handleKick | target: ${target} | isBotAdmin: ${isBotAdmin} | isOwner: ${isOwner}`,
   );
 
   if (!target) {
-    return sock.sendMessage(jid, { text: "⚠️ Reply or @mention a user." }, {quoted : message});
+    return sock.sendMessage(
+      jid,
+      { text: "⚠️ Reply or @mention a user." },
+      { quoted: message },
+    );
   }
 
   if (!isBotAdmin && !isOwner) {
     console.log("🚫 Bot is not admin — cannot kick");
-    return sock.sendMessage(jid, { text: "⚠️ I need admin rights." }, {quoted : message});
+    return sock.sendMessage(
+      jid,
+      { text: "⚠️ I need admin rights." },
+      { quoted: message },
+    );
   }
 
   if (sameUser(target, botJid)) {
-    return sock.sendMessage(jid, { text: "⚠️ I cannot remove myself." }, {quoted : message});
+    return sock.sendMessage(
+      jid,
+      { text: "⚠️ I cannot remove myself." },
+      { quoted: message },
+    );
   }
 
   const targetParticipant = findParticipant(participants, target);
@@ -246,7 +273,11 @@ async function handleKick(
   );
 
   if (isTargetAdmin && !isOwner) {
-    return sock.sendMessage(jid, { text: "❌ Cannot remove an admin." }, {quoted : message});
+    return sock.sendMessage(
+      jid,
+      { text: "❌ Cannot remove an admin." },
+      { quoted: message },
+    );
   }
 
   try {
@@ -254,10 +285,18 @@ async function handleKick(
     const targetJid = targetParticipant?.id || target;
     await sock.groupParticipantsUpdate(jid, [targetJid], "remove");
     console.log(`✅ Kicked: ${targetJid}`);
-    await sock.sendMessage(jid, { text: "✅ Member removed." }, {quoted : message});
+    await sock.sendMessage(
+      jid,
+      { text: "✅ Member removed." },
+      { quoted: message },
+    );
   } catch (err) {
     console.error("❌ Kick error:", err);
-    await sock.sendMessage(jid, { text: "❌ Failed to remove member." }, {quoted : message});
+    await sock.sendMessage(
+      jid,
+      { text: "❌ Failed to remove member." },
+      { quoted: message },
+    );
   }
 }
 
@@ -269,7 +308,11 @@ async function handleMute(sock, jid, isBotAdmin, mute, isOwner, message) {
 
   if (!isBotAdmin && !isOwner) {
     console.log("🚫 Bot is not admin — cannot mute");
-    return sock.sendMessage(jid, { text: "⚠️ I need admin rights." }, {quoted : message});
+    return sock.sendMessage(
+      jid,
+      { text: "⚠️ I need admin rights." },
+      { quoted: message },
+    );
   }
 
   try {
@@ -278,12 +321,20 @@ async function handleMute(sock, jid, isBotAdmin, mute, isOwner, message) {
       mute ? "announcement" : "not_announcement",
     );
     console.log(`✅ Group ${mute ? "muted" : "unmuted"}`);
-    await sock.sendMessage(jid, {
-      text: mute ? "🔇 Group silenced." : "🔊 Group opened.",
-    }, {quoted : message});
+    await sock.sendMessage(
+      jid,
+      {
+        text: mute ? "🔇 Group silenced." : "🔊 Group opened.",
+      },
+      { quoted: message },
+    );
   } catch (err) {
     console.error("❌ Mute error:", err);
-    await sock.sendMessage(jid, { text: "❌ Failed to change setting." }, {quoted : message});
+    await sock.sendMessage(
+      jid,
+      { text: "❌ Failed to change setting." },
+      { quoted: message },
+    );
   }
 }
 
@@ -297,23 +348,35 @@ async function handleRole(
   action,
   isOwner,
   botJid,
-  message
+  message,
 ) {
   console.log(
     `\n⚙️  handleRole | action: ${action} | target: ${target} | isBotAdmin: ${isBotAdmin}`,
   );
 
   if (!target) {
-    return sock.sendMessage(jid, { text: "⚠️ Reply or @mention a user." }, {quoted : message});
+    return sock.sendMessage(
+      jid,
+      { text: "⚠️ Reply or @mention a user." },
+      { quoted: message },
+    );
   }
 
   if (!isBotAdmin && !isOwner) {
     console.log("🚫 Bot is not admin — cannot change roles");
-    return sock.sendMessage(jid, { text: "⚠️ I need admin rights." }, {quoted : message});
+    return sock.sendMessage(
+      jid,
+      { text: "⚠️ I need admin rights." },
+      { quoted: message },
+    );
   }
 
   if (sameUser(target, botJid)) {
-    return sock.sendMessage(jid, { text: "⚠️ I cannot change my own role." }, {quoted : message});
+    return sock.sendMessage(
+      jid,
+      { text: "⚠️ I cannot change my own role." },
+      { quoted: message },
+    );
   }
 
   try {
@@ -321,15 +384,23 @@ async function handleRole(
     const targetJid = targetParticipant?.id || target;
     await sock.groupParticipantsUpdate(jid, [targetJid], action);
     console.log(`✅ ${action}: ${targetJid}`);
-    await sock.sendMessage(jid, {
-      text:
-        action === "promote"
-          ? "✅ Promoted to admin."
-          : "✅ Demoted to member.",
-    }, {quoted: message});
+    await sock.sendMessage(
+      jid,
+      {
+        text:
+          action === "promote"
+            ? "✅ Promoted to admin."
+            : "✅ Demoted to member.",
+      },
+      { quoted: message },
+    );
   } catch (err) {
     console.error(`❌ Role error (${action}):`, err);
-    await sock.sendMessage(jid, { text: "❌ Failed to change role." }, {quoted : message});
+    await sock.sendMessage(
+      jid,
+      { text: "❌ Failed to change role." },
+      { quoted: message },
+    );
   }
 }
 
@@ -352,7 +423,7 @@ async function handleInfo(sock, jid, groupMeta, message) {
   ].join("\n");
 
   const mentions = adminParticipants.map((p) => p.id);
-  await sock.sendMessage(jid, { text, mentions }, {quoted : message});
+  await sock.sendMessage(jid, { text, mentions }, { quoted: message });
 }
 
 // ===== HELP =====
@@ -363,9 +434,13 @@ async function handleHelp(sock, jid, isPrivileged, message) {
     .filter(([, meta]) => !meta.adminOnly || isPrivileged)
     .map(([, meta]) => `${meta.usage} — ${meta.desc}`);
 
-  await sock.sendMessage(jid, {
-    text: `🤖 *Commands:*\n\n${lines.join("\n")}`,
-  }, {quoted : message});
+  await sock.sendMessage(
+    jid,
+    {
+      text: `🤖 *Commands:*\n\n${lines.join("\n")}`,
+    },
+    { quoted: message },
+  );
 }
 
 // ===== WARN =====
@@ -378,43 +453,62 @@ async function handleWarn(
   action,
   isOwner,
   botJid,
-  message
+  message,
 ) {
   console.log(
     `\n⚙️  handleWarn | target: ${target} | isBotAdmin: ${isBotAdmin} | isOwner: ${isOwner}`,
   );
 
   if (!target) {
-    return sock.sendMessage(jid, { text: "⚠️ Reply or @mention a user to warn." }, {quoted : message});
+    return sock.sendMessage(
+      jid,
+      { text: "⚠️ Reply or @mention a user to warn." },
+      { quoted: message },
+    );
   }
 
   if (sameUser(target, botJid)) {
-    return sock.sendMessage(jid, { text: "⚠️ I cannot warn myself." }, {quoted : message});
+    return sock.sendMessage(
+      jid,
+      { text: "⚠️ I cannot warn myself." },
+      { quoted: message },
+    );
   }
 
   const targetParticipant = findParticipant(participants, target);
 
   if (!targetParticipant) {
     console.log("🎯 Target participant not found");
-    return sock.sendMessage(jid, { text: "⚠️ User not found in the group." }, {quoted : message});
+    return sock.sendMessage(
+      jid,
+      { text: "⚠️ User not found in the group." },
+      { quoted: message },
+    );
   }
 
   try {
     const targetNumber = extractNumber(targetParticipant.id);
     const warningText = `⚠️ @${targetNumber}, Please behave yourself or you'll be removed. 🙂`;
 
-    await sock.sendMessage(jid, {
-      text: warningText,
-      mentions: [targetParticipant.id],
-    }, {quoted : message});
+    await sock.sendMessage(
+      jid,
+      {
+        text: warningText,
+        mentions: [targetParticipant.id],
+      },
+      { quoted: message },
+    );
 
     console.log(`✅ Warned: ${targetParticipant.id}`);
   } catch (err) {
     console.error("❌ Warn error:", err);
-    await sock.sendMessage(jid, { text: "❌ Failed to send warning." }, {quoted : message});
+    await sock.sendMessage(
+      jid,
+      { text: "❌ Failed to send warning." },
+      { quoted: message },
+    );
   }
 }
-
 
 // ===== TRIVIA STATE =====
 const triviaState = new Map();
@@ -429,11 +523,9 @@ export function checkTriviaAnswer(sock, message) {
   if (!state?.active) return;
 
   const msg = message.message;
-  const text = (
-    msg?.conversation ||
-    msg?.extendedTextMessage?.text ||
-    ""
-  ).trim().toUpperCase();
+  const text = (msg?.conversation || msg?.extendedTextMessage?.text || "")
+    .trim()
+    .toUpperCase();
 
   if (!["A", "B", "C", "D"].includes(text)) return;
 
@@ -460,7 +552,9 @@ async function handleTrivia(sock, jid, message) {
   const COOLDOWN = 10_000;
 
   if (state.lastUsed && Date.now() - state.lastUsed < COOLDOWN) {
-    const secsLeft = Math.ceil((COOLDOWN - (Date.now() - state.lastUsed)) / 1000);
+    const secsLeft = Math.ceil(
+      (COOLDOWN - (Date.now() - state.lastUsed)) / 1000,
+    );
     return sock.sendMessage(jid, {
       text: `⏳ Wait *${secsLeft}s* before starting a new trivia.`,
     });
@@ -472,7 +566,6 @@ async function handleTrivia(sock, jid, message) {
   try {
     await sock.sendMessage(jid, { text: "🎲 Generating a trivia question..." });
     triviaData = await generateTriviaQuestion();
-    
   } catch (err) {
     console.error("❌ Trivia generation error:", err);
     return sock.sendMessage(jid, {
@@ -510,30 +603,51 @@ async function handleTrivia(sock, jid, message) {
     `💬 Reply with A, B, C or D!`,
   ].join("\n");
 
-  await sock.sendMessage(jid, { text }, {quoted : message});
+  await sock.sendMessage(jid, { text }, { quoted: message });
   console.log(`✅ Trivia started in ${jid} | Answer: ${answer}`);
 }
-
 
 async function handleExplain(sock, jid, message) {
   console.log(`\n⚙️  handleExplain | jid: ${jid}`);
 
   try {
     // Extract the full message text
-    const messageText = message.message?.extendedTextMessage?.text || message.message?.conversation || "";
-    
-    // Extract topic by removing the ".explain " prefix
-    const topic = messageText.replace(/^\.explain\s+/i, "").trim();
+    const messageText =
+      message.message?.extendedTextMessage?.text ||
+      message.message?.conversation ||
+      "";
 
-    // Validate topic was provided
+    // Check if user sent only ".explain" (with or without spaces)
+    if (/^\.explain\s*$/i.test(messageText)) {
+      return sock.sendMessage(
+        jid,
+        {
+          text: "❌ Please provide a topic to explain.\n\n📝 *Usage:* `.explain quantum physics`",
+        },
+        { quoted: message },
+      );
+    }
+
+    // Extract topic (space is now optional)
+    const topic = messageText.replace(/^\.explain\s*/i, "").trim();
+
+    // Extra safety check
     if (!topic) {
-      return sock.sendMessage(jid, { 
-        text: "❌ Please provide a topic to explain.\n\n📝 *Usage:* `.explain quantum physics`" 
-      }, { quoted: message });
+      return sock.sendMessage(
+        jid,
+        {
+          text: "Please provide a valid topic.\n\n📝 *Usage:* `.explain quantum physics`",
+        },
+        { quoted: message },
+      );
     }
 
     // Send loading message
-    await sock.sendMessage(jid, { text: "🔍 Let me think about that..." }, { quoted: message });
+    await sock.sendMessage(
+      jid,
+      { text: "🔍 Let me think about that..." },
+      { quoted: message },
+    );
 
     // Get explanation from AI
     console.log(`📚 Explaining: ${topic}`);
@@ -542,12 +656,14 @@ async function handleExplain(sock, jid, message) {
     // Send the explanation
     const responseText = `📚 *Explanation: ${topic}*\n\n${explanation}`;
     await sock.sendMessage(jid, { text: responseText }, { quoted: message });
-    
+
     console.log(`✅ Explanation sent for: ${topic}`);
   } catch (error) {
     console.error("❌ Error in handleExplain:", error);
-    await sock.sendMessage(jid, { 
-      text: "❌ Failed to generate explanation. Please try again." 
-    }, { quoted: message });
+    await sock.sendMessage(
+      jid,
+      { text: "❌ Failed to generate explanation. Please try again." },
+      { quoted: message },
+    );
   }
 }

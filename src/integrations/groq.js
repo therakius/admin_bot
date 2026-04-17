@@ -75,7 +75,7 @@ export async function explainTopic(topic) {
     messages: [
       {
         role: "user",
-        content: `Please provide a clear, concise explanation of: ${topic}. Keep it informative but brief (2-3 paragraphs max).`,
+        content: `Please provide a clear, concise explanation of: ${topic}. Keep it informative but brief (2-3 short paragraphs max).`,
       },
     ],
     model: "llama-3.3-70b-versatile",
